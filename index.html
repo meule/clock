@@ -1,0 +1,331 @@
+<!DOCTYPE html><html lang="en"><head>
+<head>
+	<meta charset="utf-8">
+	<meta name="mobile-web-app-capable" content="yes">
+	<style>
+		@font-face {
+		  font-family: 'Open Sans';
+		  font-style: normal;
+		  font-weight: 300;
+		  src: local('Open Sans Light'), local('OpenSans-Light'), url(http://themes.googleusercontent.com/static/fonts/opensans/v8/DXI1ORHCpsQm3Vp6mXoaTQcuEIXEaFWBWXA4NoGd_Oo.woff) format('woff');
+		}
+		@font-face {
+		  font-family: 'Open Sans';
+		  font-style: normal;
+		  font-weight: 800;
+		  src: local('Open Sans Extrabold'), local('OpenSans-Extrabold'), url(http://themes.googleusercontent.com/static/fonts/opensans/v8/EInbV5DfGHOiMmvb1Xr-hgcuEIXEaFWBWXA4NoGd_Oo.woff) format('woff');
+		}		
+		body {   height:100%; font-family: 'Open Sans', sans-serif;  background: #000; color: #ddd; font-size: 14px; margin: 0px 0px 0px 0px}
+		.axis {
+		  shape-rendering: crispEdges;
+		}
+		.axis line {
+		  stroke: #aaa;
+		}
+		line.ticks {
+		  stroke: #aaa;
+		}
+		text.labels {
+			font-weight:bold; 
+			fill:#aaa;
+		}
+		.markerLine {
+		  stroke: #fff;			
+		  stroke-width: 5;			
+		}
+		.markerLine2 {
+		  stroke: #fff;			
+		  stroke-width: 3;			
+		}
+		.minutesText{
+			alignment-baseline:hanging;
+			font-weight:normal; 
+			fill:#fff;
+		}
+		.hourText{
+			alignment-baseline:hanging;
+			font-weight:bold; 
+			fill:#fff;
+		}
+		.eventBox {
+			fill:#ad6;
+		}
+		.eventText{
+			fill:#999;
+		}
+		.eventText.title{
+			alignment-baseline:hanging;
+			fill:#999;
+		}
+		.eventText.time{
+			fill:#ddd;
+		}
+		path.domain {
+			display:none !important;
+		}
+
+	</style>
+</head>
+<body>
+	<div style="height:100%">
+		<svg id='svg' width='100%' height='100%' xlink="http://www.w3.org/1999/xlink">
+			<rect x='0' y='0' height='100%' width='100%' fill:'#000' stroke:'none'></rect>
+		</svg>
+	</div>
+</body>
+<script type="text/javascript" src="d3.v3.js"></script>
+<script type="text/javascript" src="screenfull.min.js"></script>
+<script>
+    var w = window,
+        d = document,
+        e = d.documentElement,
+        g = d.getElementsByTagName('body')[0],
+        wWidth = w.innerWidth || e.clientWidth || g.clientWidth,
+        wHeight = w.innerHeight|| e.clientHeight|| g.clientHeight;
+    var margin = {top: Math.floor(wHeight/25), right: Math.floor(wWidth/25), bottom: Math.floor(wHeight/50), left: Math.floor(wWidth/25)},
+    	width=wWidth-margin.left-margin.right,
+    	height=wHeight-margin.top-margin.bottom;
+	var hours=[];
+		now=new Date(),
+		now_5h=new Date(+now-1000*60*60*5);
+		tomorrow=new Date(+now+1000*60*60*24);
+	var svg=d3.select('#svg'),
+		events,
+		dur=1000,
+		scale={},
+		ticks, hourText, minutesText,timeUnderline,
+		calLink='http://www.google.com/calendar/feeds/nuucl1p2eupu28d6t6jro7qetc@group.calendar.google.com/private-598d588af09fae8d15159502f2d05943/full?orderby=starttime&sortorder=ascending&max-results=10&futureeventsData=true&alt=json-in-script&callback=calData&start-min='+d3.time.format('%Y-%m-%dT%H:%M:%S')(now_5h),
+		calLink2='https://www.google.com/calendar/feeds/nuucl1p2eupu28d6t6jro7qetc%40group.calendar.google.com/private-598d588af09fae8d15159502f2d05943/basic?orderby=starttime&sortorder=ascending&max-results=10&futureeventsData=true&alt=json-in-script&callback=calData',
+		eventsData=[],
+		calData,
+		calTimeParse=d3.time.format('%Y-%m-%dT%H:%M:%S').parse
+
+	var iconsMap={
+			bed:'bed,sleep,dreams,night',
+			ipad:'ipad,game,play',
+			backpack:'school,learning,kindergarten,lessons',
+			family:'family,together,all',
+			people:'meeting,BBQ,bbq,visit',
+			dance:'party,drums,dance',
+			book:'book,diafilm'
+		}
+	      //.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	scale.time=function(hour){
+		var	t1=1,
+			t2=25,
+			x1=0,
+			x2=wWidth;
+			x1=Math.log(t1+1)*(x2-x1)/(Math.log(t1+1)+Math.log(t2))
+			//return hour>1 ? x1+x0+(x2-x1-x0)*Math.log(hour)/(Math.log(t2)-Math.log(t1)) : x1+Math.log(1+hour)*x0/Math.log(t1+1)
+			return hour>0 ? x1+(x2-x1)*Math.log(hour+1)/(Math.log(t2)-Math.log(t1)) :
+							x1-(x2-x1)*Math.log(-hour+1)/(Math.log(t2)-Math.log(t1))
+	}
+	scale.fontSize=function(hour){
+		var	t1=1,
+			t2=25,
+			f1=20,
+			f2=wHeight/2;
+			//return hour>0 ? (f2-(f2-f1)*Math.log(hour+1)/(Math.log(t2)-Math.log(t1)))-(f2-(f2-f1)*Math.log(hour+2)/(Math.log(t2)-Math.log(t1))) : 200;
+			return hour>0 ? (f2-(f2-f1)*Math.log(hour+1)/(Math.log(t2)-Math.log(t1)))-(f2-(f2-f1)*Math.log(hour+2)/(Math.log(t2)-Math.log(t1))) :
+							(f2-(f2-f1)*Math.log(hour+2)/(Math.log(t2)-Math.log(t1)))-(f2-(f2-f1)*Math.log(hour+3)/(Math.log(t2)-Math.log(t1)));
+	}
+	scale.opacity=function(hour){
+		var	t1=1,
+			t2=25,
+			f1=-5,
+			f2=10;
+			//return hour>0 ? (f2-(f2-f1)*Math.log(hour+1)/(Math.log(t2)-Math.log(t1)))-(f2-(f2-f1)*Math.log(hour+2)/(Math.log(t2)-Math.log(t1))) : 1;
+			return 	hour==0 ? (f2-(f2-f1)*Math.log(hour+2)/(Math.log(t2)-Math.log(t1)))-(f2-(f2-f1)*Math.log(hour+3)/(Math.log(t2)-Math.log(t1))) :
+					(f2-(f2-f1)*Math.log(hour+1)/(Math.log(t2)-Math.log(t1)))-(f2-(f2-f1)*Math.log(hour+2)/(Math.log(t2)-Math.log(t1)));
+	}
+
+	redraw=function(){
+		setTimeout(redraw,1000*60);
+
+		var time=new Date,
+			minutes=+d3.time.format('%M')(time)||0,
+			hour=+d3.time.format('%H')(time)||0,
+			delta=minutes/60,
+			timeWidth;
+		
+		hours.forEach(function(h){
+			h.label=(h.hour+hour);
+			if (h.label>23) h.label-=24;
+		})
+
+		hourText.text(hour+' ');
+		minutesText.text(+minutes<10 ? '0'+minutes : minutes).attr('x',hourText.node().getComputedTextLength()+margin.left);
+
+		ticks.select('line')
+			.transition()
+			.attr('opacity',function(d){return d.label<hours[0].label&&d.label!=0 ? (hours[0].label<18 ? 0 : scale.opacity(d.hour)/1 ) : scale.opacity(d.hour);})
+			.attr('x1',function(d){return scale.time(d.hour-delta);})
+			.attr('x2',function(d){return scale.time(d.hour-delta);})
+			.attr('stroke-width',function(d){return ''+(d.label==0 ? 4 : 1)+'px'})
+			.duration(dur)
+		ticks.select('text')
+			.text(function(d){return d.label==0 ? d3.time.format('%a %d')(tomorrow) : (d.label<hours[0].label&&d.label<3) ? '' : d.label;})
+			.style('font-size',function(d){return (d.label==0 ? scale.fontSize(2) : ''+scale.fontSize(d.hour))+'px';})
+			.transition()
+			//.attr('dy',function(d){return ''+scale.fontSize(d.hour)+'px';})
+			.attr('fill-opacity',function(d){return scale.opacity(d.hour);})
+			.attr('x',function(d){return d.hour==0 ? (this.getComputedTextLength()>scale.time(0)-scale.time(-delta)?-4:4)+scale.time(d.hour-delta): 4+scale.time(d.hour-delta);})
+			.style('text-anchor',function(d){return d.hour>0 ? 'begin' : this.getComputedTextLength()>scale.time(0)-scale.time(-delta) ? 'end' : 'begin'})
+			.duration(dur);
+		if (events){
+			events.select('rect').attr('x',function(e){return scale.time((e.startHour-hour-delta+e.startDay*24))})
+				.attr('width',function(e){
+					timeWith=scale.time((e.endHour-hour-delta+e.startDay*24))-scale.time((e.startHour-hour-delta+e.startDay*24))
+					return timeWith>wHeight/10+4 ? timeWith : wHeight/10+4;
+				});
+			events.select('image').attr('x',function(e){return 2+scale.time((e.startHour-hour-delta+e.startDay*24))})
+			events.select('text.title')
+				.attr('x',function(e){return 1.1*wHeight/10+scale.time((e.startHour-hour-delta+e.startDay*24))})
+				.style('font-size',wHeight/40);
+			events.select('text.time')
+				.attr('x',function(e){return 1.1*wHeight/10+scale.time((e.startHour-hour-delta+e.startDay*24))});
+		}
+
+
+		//timeUnderline.attr('x1',margin.left).attr('x2',margin.left+hourText.node().getComputedTextLength()+minutesText.node().getComputedTextLength());
+		
+		//console.log(hourDX);
+		//minutesText.transition().attr('x',''+(scale.time(0)+minutesWidth)+'').duration(dur);
+
+	}
+
+	init=function() {
+		hours=[];
+		for(var i=0;i<25;i++) {
+			hours.push({hour:i,label:i});
+			//console.log(scale.time(hours[i].hour));
+		}
+
+		ticks=svg.append('g').selectAll('g')
+			.data(hours).enter().append('g')
+		ticks.append('line')
+			.attr('class','axis ticks')
+			.attr('y1',wHeight-margin.bottom).attr('y2',wHeight/2);
+		ticks.append('text').attr('class','axis labels')
+			.attr('y',wHeight-margin.bottom)
+			.attr('text-anchor','begin');
+
+		svg.append('rect').attr('x',0).attr('width',wWidth).attr('y',wHeight/2+wHeight/25).attr('height',wHeight/2-wHeight/25-wHeight/16-margin.bottom).attr('fill','#000')
+
+		hourText=svg.append('text').attr('class','timetext hourText')
+			.attr('y',margin.top)
+			.attr('x',margin.left)
+			.attr('dx',0)
+			.style('font-size',''+0.4*wHeight+'px')
+		minutesText=svg.append('text').attr('class','timetext minutesText')
+			.attr('y',margin.top)
+			.attr('dx',0)
+			.style('font-size',''+0.4*wHeight+'px');
+		/*
+		d3.selectAll('.timetext').on('click', function () {
+		    //if (screenfull.enabled) 
+		    	screenfull.request();
+		});
+		window.scrollTo(0,1);
+		*/
+
+		svg.append('line').attr('class','markerLine')
+			.attr('y1',wHeight).attr('y2',wHeight/2-margin.bottom)
+			.attr('x1',scale.time(0)).attr('x2',scale.time(0));
+		//svg.append('line').attr('class','markerLine2')
+		//	.attr('y1',wHeight/2).attr('y2',0.37*wHeight)
+		//	.attr('x1',scale.time(0)).attr('x2',scale.time(0));
+		timeUnderline=svg.append('line').attr('class','markerLine2')
+			.attr('y1',0.37*wHeight).attr('y2',0.37*wHeight)
+			.attr('x1',margin.left).attr('x2',margin.left+hourText.node().getComputedTextLength()+minutesText.node().getComputedTextLength());
+		
+	}	
+	function text2words(ttt){
+		//making words array from string
+		return ttt
+			.replace( /(?:\bhttps?:\/\/|\bwww\.|\[url)\S+\s*/g, '' )
+			.replace(/[«»+=_#%,.:?!()<>'"@;/-]/g,' ')
+			.replace(/[0-9]/g,' ')
+			.replace(/\s{2,}/g, ' ')
+			.replace(/^\s/,'').replace(/\s$/,'')
+			.toLowerCase()
+			.split(' ');
+	  }
+	function calData(data){
+		calData=data.feed.entry;
+		var eNumber=0,
+			curStart;
+		calData.forEach(function(e){
+			if (curStart=calTimeParse(((e['gd$when']) ? e['gd$when'][0].startTime : "").split('.')[0]))
+			{
+				eventsData.push({
+					title:e.title.$t,
+					start:curStart,
+					end: calTimeParse(((e['gd$when']) ? e['gd$when'][0].endTime : "").split('.')[0]),
+					line:eNumber%3,
+				});
+				curEvent=eventsData[eventsData.length-1]
+				curEvent.startHour= (+d3.time.format('%M')(curEvent.start)||0)/60+(+d3.time.format('%H')(curEvent.start)||0);
+				curEvent.endHour= (+d3.time.format('%M')(curEvent.end)||0)/60+(+d3.time.format('%H')(curEvent.end)||0);
+				curEvent.startDay=(+d3.time.format('%d')(curEvent.start))-(+d3.time.format('%d')(now));
+				text2words(curEvent.title).forEach(function(word){
+					for (icon in iconsMap) {
+						if (iconsMap[icon].indexOf(word)!=-1) curEvent.icon=icon;
+					}
+				})
+			}
+			eNumber++;
+		})
+		console.log(eventsData);
+		var yDelta=wHeight/8
+		var yMargin=(wHeight/2-yDelta*3-margin.bottom)/2+wHeight/2//+1.5*scale.fontSize(0);
+		events=svg.append('g').selectAll('g').data(eventsData).enter().append('g');
+		events.append('rect').attr('class','eventBox').style('display','none')
+			.attr('y',function(e){
+				return yMargin+e.line*yDelta;
+			})
+			.attr('height',wHeight/10);
+		events.append('svg:image').attr('class','eventIcon').attr('id',function(e){return e.icon})
+			.attr('y',function(e){
+				return yMargin+e.line*yDelta+2;
+			})
+			.attr('height',wHeight/10-4)
+			.attr('width',wHeight/10-4)
+			.attr('xlink:href',function(e){return 'icons/'+e.icon+'.svg'});
+		events.append('text').attr('class','eventText title')
+			.attr('y',function(e){
+				return yMargin+e.line*yDelta+(1/2)*wHeight/10;
+			})
+			.text(function(e){return e.title})
+			.style('font-size',wHeight/32);
+		events.append('text').attr('class','eventText time')
+			.attr('y',function(e){
+				return yMargin+e.line*yDelta-(1/3)*wHeight/32+(1/2)*wHeight/10;;
+			})
+			.text(function(e){return d3.time.format('%H:%M')(e.start)})
+			.style('font-size',wHeight/40);
+		redraw();
+	}
+
+	function redraw1h(){
+		location.reload(true)
+		setTimeout(redraw1h,1000*60*15)
+	}
+	//d3.json(calLink,function(data){
+	//	console.log(data);
+	//})
+
+	init();
+	redraw();
+	setTimeout(redraw1h,1000*60*15);
+
+(function(d){  var js, id = 'loadCal', ref = d.getElementsByTagName('script')[0];
+     if (d.getElementById(id)) {return;}
+     js = d.createElement('script'); js.id = id; js.async = true;
+     js.src = calLink;
+     ref.parentNode.insertBefore(js, ref);
+     //console.log(js);
+      }(document));
+
+</script>
