@@ -84,7 +84,9 @@
         wHeight = w.innerHeight|| e.clientHeight|| g.clientHeight;
     var margin = {top: Math.floor(wHeight/25), right: Math.floor(wWidth/25), bottom: Math.floor(wHeight/50), left: Math.floor(wWidth/25)},
     	width=wWidth-margin.left-margin.right,
-    	height=wHeight-margin.top-margin.bottom;
+    	height=wHeight-margin.top-margin.bottom,
+		yDelta=wHeight/8,
+		yMargin=(wHeight/2-yDelta*3-margin.bottom)/2+wHeight/2//+1.5*scale.fontSize(0);
 	var hours=[];
 		now=new Date(),
 		now_5h=new Date(+now-1000*60*60*5);
@@ -192,16 +194,21 @@
 					timeWith=scale.time((e.endHour-hour-delta+e.startDay*24))-scale.time((e.startHour-hour-delta+e.startDay*24))
 					return timeWith>wHeight/10+4 ? timeWith : wHeight/10+4;
 				});
+			console.log();
 			events.select('image')
 				.attr('x',function(e){return 2+scale.time((e.startHour-hour-delta+e.startDay*24))})
-				.attr('height',wHeight/10-4)
-				.attr('width',wHeight/10-4);
+				.attr('height',function(e){return e.iconSize=scale.fontSize(Math.round(e.startHour-hour-delta+e.startDay*24))+(wHeight/30); })
+				.attr('width',function(e){return e.iconSize });
 
 			events.select('text.title')
-				.attr('x',function(e){return 1.1*wHeight/10+scale.time((e.startHour-hour-delta+e.startDay*24))})
-				.style('font-size',wHeight/40);
+				.attr('x',function(e){return 4+1.1*e.iconSize+scale.time((e.startHour-hour-delta+e.startDay*24))})
+				.style('font-size',function(e){return e.iconSize/4; })
+				.attr('y',function(e){ return yMargin+e.line*yDelta+(1/2)*e.iconSize; });
+
 			events.select('text.time')
-				.attr('x',function(e){return 1.1*wHeight/10+scale.time((e.startHour-hour-delta+e.startDay*24))});
+				.attr('x',function(e){return 4+1.1*e.iconSize+scale.time((e.startHour-hour-delta+e.startDay*24))})
+				.style('font-size',function(e){return e.iconSize/4; })
+				.attr('y',function(e){ return yMargin+e.line*yDelta-(1/3)*wHeight/32+(1/2)*e.iconSize; })			
 		}
 
 
@@ -295,8 +302,6 @@
 			eNumber++;
 		})
 		console.log(eventsData); 
-		var yDelta=wHeight/8
-		var yMargin=(wHeight/2-yDelta*3-margin.bottom)/2+wHeight/2//+1.5*scale.fontSize(0);
 		events=svg.append('g').selectAll('g').data(eventsData).enter().append('g');
 		events.append('rect').attr('class','eventBox').style('display','none')
 			.attr('y',function(e){
@@ -309,15 +314,11 @@
 			})
 			.attr('xlink:href',function(e){return 'icons/'+e.icon+'.svg'});
 		events.append('text').attr('class','eventText title')
-			.attr('y',function(e){
-				return yMargin+e.line*yDelta+(1/2)*wHeight/10;
-			})
+			.attr('y',function(e){ return yMargin+e.line*yDelta+(1/2)*wHeight/10; })
 			.text(function(e){return e.title})
 			.style('font-size',wHeight/32);
 		events.append('text').attr('class','eventText time')
-			.attr('y',function(e){
-				return yMargin+e.line*yDelta-(1/3)*wHeight/32+(1/2)*wHeight/10;;
-			})
+			.attr('y',function(e){ return yMargin+e.line*yDelta-(1/3)*wHeight/32+(1/2)*wHeight/10; })
 			.text(function(e){return d3.time.format('%H:%M')(e.start)})
 			.style('font-size',wHeight/40);
 		redraw();
