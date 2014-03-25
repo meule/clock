@@ -121,6 +121,19 @@
 			return hour>0 ? x1+(x2-x1)*Math.log(hour+1)/(Math.log(t2)-Math.log(t1)) :
 							x1-(x2-x1)*Math.log(-hour+1)/(Math.log(t2)-Math.log(t1))
 	}
+	scale.general=function(hour) {
+		var	t1=1,
+			t2=25,
+			f1=2,
+			f2=6;
+			hour-=1;
+			if (hour>24) hour=24
+			if (hour<0) hour=-hour;
+			return Math.log((25-hour)/(25/Math.exp(1)));
+			//return hour>0 ? (f2-(f2-f1)*Math.log(hour+1)/(Math.log(t2)-Math.log(t1)))-(f2-(f2-f1)*Math.log(hour+2)/(Math.log(t2)-Math.log(t1))) : 200;
+			return hour>0 ? (f2-(f2-f1)*Math.log(hour+1)/(Math.log(t2)-Math.log(t1)))-(f2-(f2-f1)*Math.log(hour+2)/(Math.log(t2)-Math.log(t1))) :
+							(f2-(f2-f1)*Math.log(hour+2)/(Math.log(t2)-Math.log(t1)))-(f2-(f2-f1)*Math.log(hour+3)/(Math.log(t2)-Math.log(t1)));		
+	}
 	scale.fontSize=function(hour){
 		var	t1=1,
 			t2=25,
@@ -179,7 +192,11 @@
 					timeWith=scale.time((e.endHour-hour-delta+e.startDay*24))-scale.time((e.startHour-hour-delta+e.startDay*24))
 					return timeWith>wHeight/10+4 ? timeWith : wHeight/10+4;
 				});
-			events.select('image').attr('x',function(e){return 2+scale.time((e.startHour-hour-delta+e.startDay*24))})
+			events.select('image')
+				.attr('x',function(e){return 2+scale.time((e.startHour-hour-delta+e.startDay*24))})
+				.attr('height',wHeight/10-4)
+				.attr('width',wHeight/10-4);
+
 			events.select('text.title')
 				.attr('x',function(e){return 1.1*wHeight/10+scale.time((e.startHour-hour-delta+e.startDay*24))})
 				.style('font-size',wHeight/40);
@@ -277,7 +294,7 @@
 			}
 			eNumber++;
 		})
-		console.log(eventsData);
+		console.log(eventsData); 
 		var yDelta=wHeight/8
 		var yMargin=(wHeight/2-yDelta*3-margin.bottom)/2+wHeight/2//+1.5*scale.fontSize(0);
 		events=svg.append('g').selectAll('g').data(eventsData).enter().append('g');
@@ -290,8 +307,6 @@
 			.attr('y',function(e){
 				return yMargin+e.line*yDelta+2;
 			})
-			.attr('height',wHeight/10-4)
-			.attr('width',wHeight/10-4)
 			.attr('xlink:href',function(e){return 'icons/'+e.icon+'.svg'});
 		events.append('text').attr('class','eventText title')
 			.attr('y',function(e){

@@ -1,0 +1,16 @@
+    <widget id="com.ft" version="0.0.1">
+        <name>Family Times</name>
+        <description>
+            Turn you old tablet into time planning tool for your family 
+        </description>
+        <author email="k@varik.ru" href="https://www.behance.net/kvarik">
+            Konstantin Varik
+        </author>
+        <content src="index.html" />
+        <access origin="*" />
+        <preference name="Fullscreen" value="true" />
+        <preference name="WebViewBounce" value="true" />
+<preference name="DisallowOverscroll" value="true"/>
+<preference name="BackgroundColor" value="0xff000000"/>
+
+    </widget>
